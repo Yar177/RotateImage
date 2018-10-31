@@ -11,7 +11,9 @@ import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -24,9 +26,14 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
 
     private final int REQ_CODE_PICTURES = 1021;
+    private static final int REQUEST_STORAGE_PERMISSION = 1;
 
     private final String TAG = "MainActivity --> ";
 
@@ -62,37 +70,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-        private void openPictures(){
-            Intent intent = new Intent();
+    private void openPictures(){
+        Intent intent = new Intent();
 
-            intent.setType("image/*");
-            intent.setAction(Intent.ACTION_GET_CONTENT);
-            startActivityForResult(intent, REQ_CODE_PICTURES);
-        }
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(intent, REQ_CODE_PICTURES);
+    }
 
 
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         if (resultCode == RESULT_OK) {
             if (requestCode == REQ_CODE_PICTURES) {
-
-
                 Uri uri = data.getData();
-                Toast.makeText(this, uri.toString(), Toast.LENGTH_LONG);
 
-                if (uri != null) {
-                    String imageURI = uri.toString();
-                    Log.i(TAG, "Selected Photo URI: " + imageURI);
-                    //  selectedPhotos.add(imageURI);
-
-                    File myFile = new File(uri.toString());
-                    String path = String.valueOf(myFile.getAbsoluteFile());
-                    selectedPhotos.add(path);
-
-                    imageView.setImageURI(uri);
+//                if (uri != null) {
+//                    String imageURI = uri.toString();
+//                    Log.i(TAG, "Selected Photo URI: " + imageURI);
+//                    //  selectedPhotos.add(imageURI);
+//
+//                    File myFile = new File(uri.toString());
+//                    String path = String.valueOf(myFile.getAbsoluteFile());
+//                    selectedPhotos.add(path);
 
 
-                    //String filePath = getRealPathFromURI(this, uri);
 
                     try {
                         getExifInfo(uri);
@@ -100,110 +102,86 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
 
-//                    int orientation = getDegreesExifOrientation(path);
-
-                   // Log.i("EXIF",  filePath);
-                }
+              //  }
             }
-
-         }
 
         }
 
-
-
-    public String getRealPathFromURI(Context context, Uri contentUri) {
-        Cursor cursor = null;
-        try {
-            String[] proj = { MediaStore.Images.Media.DATA };
-            cursor = context.getContentResolver().query(contentUri,  proj, null, null, null);
-            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-            cursor.moveToFirst();
-            return cursor.getString(column_index);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
     }
 
-        public  void getExifInfo(Uri uri) throws IOException {
-            if (isStoragePermissionGranted()) {
 
 
-                File file = new File(uri.toString());
-                String filePath = file.getAbsolutePath();
-
-                // InputStream inputStream = new FileInputStream(uri.getPath());
-                String path = String.valueOf(file.getAbsolutePath());
-                String path1 = String.valueOf(file.getPath());
+    public  void getExifInfo(Uri uri) throws IOException {
+        if (isStoragePermissionGranted()) {
 
 
-//                BitmapFactory.Options options = new BitmapFactory.Options();
-//
-//
-//                options.inJustDecodeBounds = true;
-//
-//                BitmapFactory.decodeFile(filePath, options);
-//
-//                int height = options.outHeight;
-//                int width = options.outWidth;
+            try {
 
-                try {
+                InputStream is = this.getContentResolver().openInputStream(uri);
+                //tried this with
+                Bitmap bitmap = BitmapFactory.decodeStream(is);
+                is.close();
 
-                    InputStream is = this.getContentResolver().openInputStream(uri);
+                try{
+                InputStream inputStream = this.getContentResolver().openInputStream(uri);
+                ExifInterface ei = null;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    try{
+                        ei = new ExifInterface(inputStream);
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
 
-                    //tried this with
-                    Bitmap bitmap = BitmapFactory.decodeStream(is);
-
-                    //Bitmap bitmap = BitmapFactory.decodeFile(path);
-                    //Bitmap bitmap = BitmapFactory.decodeFile(path1);
-                    //Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-
-
-//                    InputStream input = this.getContentResolver().openInputStream(uri);
-                    ExifInterface ei = null;
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                        ei = new ExifInterface(is);
-                    } else {
+                } else {
+                    try{
                         ei = new ExifInterface(uri.getEncodedPath());
-                    }
-                    int orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION,
-                            ExifInterface.ORIENTATION_UNDEFINED);
-
-                    Bitmap rotatedBitmap = null;
-                    switch (orientation) {
-
-                        case ExifInterface.ORIENTATION_ROTATE_90:
-                            rotatedBitmap = rotateImage(bitmap, 90);
-                            break;
-
-                        case ExifInterface.ORIENTATION_ROTATE_180:
-                            rotatedBitmap = rotateImage(bitmap, 180);
-                            break;
-
-                        case ExifInterface.ORIENTATION_ROTATE_270:
-                            rotatedBitmap = rotateImage(bitmap, 270);
-                            break;
-
-                        case ExifInterface.ORIENTATION_NORMAL:
-                        default:
-                            rotatedBitmap = bitmap;
+                    }catch (Exception e){
+                        e.printStackTrace();
                     }
 
-                    imageView.setImageBitmap(rotatedBitmap);
-                } catch (Exception e) {
-                    e.printStackTrace();
+                }
+                int orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL);
+
+                Bitmap rotatedBitmap = null;
+                switch (orientation) {
+
+                    case ExifInterface.ORIENTATION_ROTATE_90:
+                        rotatedBitmap = rotateImage(bitmap, 90);
+                        break;
+
+                    case ExifInterface.ORIENTATION_ROTATE_180:
+                        rotatedBitmap = rotateImage(bitmap, 180);
+                        break;
+
+                    case ExifInterface.ORIENTATION_ROTATE_270:
+                        rotatedBitmap = rotateImage(bitmap, 270);
+                        break;
+
+                    case ExifInterface.ORIENTATION_NORMAL:
+                    default:
+                        rotatedBitmap = bitmap;
                 }
 
-            }else {
-                return;
+                imageView.setImageBitmap(rotatedBitmap);
+
+                    saveImage(rotatedBitmap);
+
+                    inputStream.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }}catch (Exception e){
+                e.printStackTrace();
             }
+
+        }else {
+            return;
+        }
 
 //
 
 
-        }
+    }
 
 
     public static Bitmap rotateImage(Bitmap source, float angle) {
@@ -212,6 +190,44 @@ public class MainActivity extends AppCompatActivity {
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(),
                 matrix, true);
     }
+
+
+
+
+    public static String saveImage(Bitmap image) {
+        String savedImagePath = null;
+
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + ".jpg";
+
+        String TEMP_FOLDER = "/temp/.kodak";
+        String tempFolder = Environment.getExternalStorageDirectory().getAbsolutePath() + TEMP_FOLDER;
+        File storageDir = new File(tempFolder);
+
+        boolean success = true;
+
+        if (!storageDir.exists()){
+            success = storageDir.mkdirs();
+        }
+        if (success){
+            File imageFile = new File(storageDir, imageFileName);
+            savedImagePath = imageFile.getAbsolutePath();
+            try {
+                OutputStream fOut = new FileOutputStream(imageFile);
+                image.compress(Bitmap.CompressFormat.JPEG, 95, fOut);
+                fOut.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+        }
+
+        return savedImagePath;
+
+    }
+
+
+
 
 
     public  boolean isStoragePermissionGranted() {
@@ -230,6 +246,26 @@ public class MainActivity extends AppCompatActivity {
         else { //permission is automatically granted on sdk<23 upon installation
             Log.v(TAG,"Permission is granted");
             return true;
+        }
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        // Called when you request permission to read and write to external storage
+        switch (requestCode) {
+            case REQUEST_STORAGE_PERMISSION: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // If you get permission, launch the camera
+                   return;
+                } else {
+                    // If you do not get permission, show a Toast
+                    Toast.makeText(this,"Permission Denied", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            }
         }
     }
 
