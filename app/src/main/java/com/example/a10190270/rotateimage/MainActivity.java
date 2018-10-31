@@ -139,30 +139,32 @@ public class MainActivity extends AppCompatActivity {
                 String path1 = String.valueOf(file.getPath());
 
 
-                BitmapFactory.Options options = new BitmapFactory.Options();
-
-
-                options.inJustDecodeBounds = true;
-
-                BitmapFactory.decodeFile(filePath, options);
-
-                int height = options.outHeight;
-                int width = options.outWidth;
+//                BitmapFactory.Options options = new BitmapFactory.Options();
+//
+//
+//                options.inJustDecodeBounds = true;
+//
+//                BitmapFactory.decodeFile(filePath, options);
+//
+//                int height = options.outHeight;
+//                int width = options.outWidth;
 
                 try {
 
-                    //tried this with
-                    Bitmap bitmap = BitmapFactory.decodeFile(path);
+                    InputStream is = this.getContentResolver().openInputStream(uri);
 
-                    //    Bitmap bitmap = BitmapFactory.decodeFile(path);
+                    //tried this with
+                    Bitmap bitmap = BitmapFactory.decodeStream(is);
+
+                    //Bitmap bitmap = BitmapFactory.decodeFile(path);
                     //Bitmap bitmap = BitmapFactory.decodeFile(path1);
                     //Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
 
 
-                    InputStream input = this.getContentResolver().openInputStream(uri);
+//                    InputStream input = this.getContentResolver().openInputStream(uri);
                     ExifInterface ei = null;
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                        ei = new ExifInterface(input);
+                        ei = new ExifInterface(is);
                     } else {
                         ei = new ExifInterface(uri.getEncodedPath());
                     }
@@ -188,6 +190,8 @@ public class MainActivity extends AppCompatActivity {
                         default:
                             rotatedBitmap = bitmap;
                     }
+
+                    imageView.setImageBitmap(rotatedBitmap);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -197,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
 //
-//            imageView.setImageBitmap(rotatedBitmap);
+
 
         }
 
