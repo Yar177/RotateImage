@@ -1,6 +1,7 @@
 package com.example.a10190270.rotateimage;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -22,14 +23,18 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageSwitcher;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +44,10 @@ public class MainActivity extends AppCompatActivity {
 
     private Button addImage;
     private ImageView imageView;
+    private TextView mImgL;
+    private TextView mImgInfo;
+    private TextView mMemL;
+    private TextView mMemInfo;
 
     private final int REQ_CODE_PICTURES = 1021;
     private static final int REQUEST_STORAGE_PERMISSION = 1;
@@ -84,25 +93,12 @@ public class MainActivity extends AppCompatActivity {
         if (resultCode == RESULT_OK) {
             if (requestCode == REQ_CODE_PICTURES) {
                 Uri uri = data.getData();
-
-//                if (uri != null) {
-//                    String imageURI = uri.toString();
-//                    Log.i(TAG, "Selected Photo URI: " + imageURI);
-//                    //  selectedPhotos.add(imageURI);
-//
-//                    File myFile = new File(uri.toString());
-//                    String path = String.valueOf(myFile.getAbsoluteFile());
-//                    selectedPhotos.add(path);
-
-
-
                     try {
                         getExifInfo(uri);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
-              //  }
             }
 
         }
@@ -110,9 +106,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    private ActivityManager.MemoryInfo getAvaliableMemory(){
+        ActivityManager activityManager = (ActivityManager) this.getSystemService(ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        activityManager.getMemoryInfo(memoryInfo);
+        return memoryInfo;
+
+    }
+
+
 
     public  void getExifInfo(Uri uri) throws IOException {
+
+
         if (isStoragePermissionGranted()) {
+
+//            ActivityManager.getMyMemoryState(getExifInfo(uri));
+            ActivityManager.MemoryInfo memoryInfo = getAvaliableMemory();
+
+            if (!memoryInfo.lowMemory){
+                Log.i("MemoryCheck", "==========>>> Passed Memory Check");
+
+            }else {
+                Log.i("MemoryCheck", "==========>>> Didn't Pass Memory Check");
+            }
+
+
+
+
 
 
             try {
@@ -120,12 +141,24 @@ public class MainActivity extends AppCompatActivity {
                 InputStream is = this.getContentResolver().openInputStream(uri);
                 //tried this with
                 Bitmap bitmap = BitmapFactory.decodeStream(is);
+
+                int size =  bitmap.getAllocationByteCount();
+
+                if ((size*3) >= memoryInfo.threshold) Log.i("Low memry", "H===================>>>ere");
+                else Log.i("Low memry", "NOOOOT ==========>>>  H===================>>>ere");
+
                 is.close();
 
                 try{
+
+
                 InputStream inputStream = this.getContentResolver().openInputStream(uri);
+
+
+
+
                 ExifInterface ei = null;
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     try{
                         ei = new ExifInterface(inputStream);
                     }catch (Exception e){
@@ -144,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
                         ExifInterface.ORIENTATION_NORMAL);
 
                 Bitmap rotatedBitmap = null;
+
                 switch (orientation) {
 
                     case ExifInterface.ORIENTATION_ROTATE_90:
@@ -196,6 +230,11 @@ public class MainActivity extends AppCompatActivity {
 
     public static String saveImage(Bitmap image) {
         String savedImagePath = null;
+
+        int size =  image.getAllocationByteCount();
+
+        if (size != 0) Log.i("Low memry", "H===================>>>ere");
+        else Log.i("Low memry", "NOT ======> H===================>>>ere");
 
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String imageFileName = "JPEG_" + timeStamp + ".jpg";
